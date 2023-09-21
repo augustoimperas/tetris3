@@ -1,0 +1,164 @@
+// Defina as variáveis e funções para a lógica do Tetris aqui
+
+document.addEventListener('DOMContentLoaded', () => {
+    // document.addEventListener('DOMContentLoaded', () => {
+    const grid = document.querySelector('.game-container');
+    let squares = Array.from(document.querySelectorAll('.game-container div'));
+    const scoreDisplay = document.querySelector('#score');
+    const startBtn = document.querySelector('#start-button');
+    const width = 10;
+    let nextRandom = 0;
+    let timerId;
+    let score = 0;
+
+    // Define as diferentes formas das peças
+    const lTetromino = [
+        [1, width+1, width*2+1, 2],
+        [width, width+1, width+2, width*2+2],
+        [1, width+1, width*2+1, width*2],
+        [width, width*2, width*2+1, width*2+2]
+    ];
+
+    // Função que gera uma nova peça de forma aleatória
+    function randomTetromino() {
+        const tetrominos = [lTetromino];
+        const random = Math.floor(Math.random() * tetrominos.length);
+        return tetrominos[random];
+    }
+
+    let currentPosition = 4;
+    let currentRotation = 0;
+    let current = randomTetromino();
+
+    // Desenha a peça no grid
+    function draw() {
+        current.forEach(index => {
+            squares[currentPosition + index].classList.add('tetromino');
+        });
+    }
+
+    // Apaga a peça do grid
+    function undraw() {
+        current.forEach(index => {
+            squares[currentPosition + index].classList.remove('tetromino');
+        });
+    }
+
+    // Move a peça para baixo
+    function moveDown() {
+        undraw();
+        currentPosition += width;
+        draw();
+        freeze();
+    }
+
+    // Define o intervalo para mover a peça para baixo automaticamente
+    timerId = setInterval(moveDown, 1000);
+
+    // Função para congelar a peça quando ela atinge o final do grid ou encontra outra peça
+    function freeze() {
+        if (current.some(index => squares[currentPosition + index + width].classList.contains('taken'))) {
+            current.forEach(index => squares[currentPosition + index].classList.add('taken'));
+            current = randomTetromino();
+            currentPosition = 4;
+            draw();
+            displayShape();
+            addScore();
+            gameOver();
+        }
+    }
+
+    // Event listener para controlar a movimentação da peça
+    document.addEventListener('keyup', control);
+
+    // Função que controla a movimentação da peça
+    function control(e) {
+        if (e.keyCode === 37) {
+            moveLeft();
+        } else if (e.keyCode === 38) {
+            rotate();
+        } else if (e.keyCode === 39) {
+            moveRight();
+        } else if (e.keyCode === 40) {
+            moveDown();
+        }
+    }
+
+    // Move a peça para a esquerda
+    function moveLeft() {
+        undraw();
+        const isAtLeftEdge = current.some(index => (currentPosition + index) % width === 0);
+        if (!isAtLeftEdge) currentPosition -= 1;
+        if (current.some(index => squares[currentPosition + index].classList.contains('taken'))) {
+            currentPosition += 1;
+        }
+        draw();
+    }
+
+    // Move a peça para a direita
+    function moveRight() {
+        undraw();
+        const isAtRightEdge = current.some(index => (currentPosition + index) % width === width - 1);
+        if (!isAtRightEdge) currentPosition += 1;
+        if (current.some(index => squares[currentPosition + index].classList.contains('taken'))) {
+            currentPosition -= 1;
+        }
+        draw();
+    }
+
+    // Gira a peça
+    function rotate() {
+        undraw();
+        currentRotation++;
+        if (currentRotation === current.length) {
+            currentRotation = 0;
+        }
+        current = current[currentRotation];
+        draw();
+    }
+
+    // Função para mostrar a próxima peça no painel lateral
+    const displaySquares = document.querySelectorAll('.mini-grid div');
+    const displayWidth = 4;
+    let displayIndex = 0;
+
+    const upNextTetrominos = [
+        [1, displayWidth+1, displayWidth*2+1, 2], // lTetromino
+        // Outros tetrominos...
+    ];
+
+    function displayShape() {
+        displaySquares.forEach(square => {
+            square.classList.remove('tetromino');
+        });
+        upNextTetrominos[nextRandom].forEach(index => {
+            displaySquares[displayIndex + index].classList.add('tetromino');
+        });
+    }
+
+    // Adiciona pontuação ao completar linhas
+    function addScore() {
+        for (let i = 0; i < 199; i += width) {
+            const row = [i, i+1, i+2, i+3, i+4, i+5, i+6, i+7, i+8, i+9];
+            if (row.every(index => squares[index].classList.contains('taken'))) {
+                score += 10;
+                scoreDisplay.innerHTML = score;
+                row.forEach(index => {
+                    squares[index].classList.remove('taken');
+                    squares[index].classList.remove('tetromino');
+                });
+                const squaresRemoved = squares.splice(i, width);
+                squares = squaresRemoved.concat(squares);
+                squares.forEach(cell => grid.appendChild(cell));
+            }
+        }
+    }
+
+    // Fim de jogo
+    function gameOver() {
+        if (current.some(index => squares[currentPosition + index].classList.contains('taken'))) {
+            scoreDisplay.innerHTML = 'Fim de Jogo';
+            clearInterval(timerId);
+        }
+    }
+});
